@@ -3,7 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 import jwt
 from flask_jwt import JWT, jwt_required, current_identity
 import os
-
+import re
 
 
 app = Flask(__name__)
@@ -66,6 +66,10 @@ class Comment(db.Model):
 
 db.create_all()
 
+def validate_email(email):
+    regex = r'^\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,7}\b'
+    return re.match(regex, email)
+
 @app.route('/api/register', methods=['POST'])
 def register_user():
     data = request.json
@@ -74,12 +78,15 @@ def register_user():
     password = data.get('password')
     if not username or not email or not password:
         return jsonify({"error": "Username, email, and password are required."}), 400
+    if not validate_email(email):
+        return jsonify({"error": "Invalid email address format."}), 400
     if User.query.filter_by(username=username).first() or User.query.filter_by(email=email).first():
         return jsonify({"error": "Username or email already exists."}), 409
     user = User(username=username, email=email, password=password)
     db.session.add(user)
     db.session.commit()
     return jsonify({"message": "User registered successfully."}), 201
+
 
 
 @app.route('/api/login', methods=['POST'])
